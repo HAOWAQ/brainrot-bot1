@@ -1,0 +1,112 @@
+from aiogram import Bot, Dispatcher, types
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.utils import executor
+import json
+from db import init_db, get_user
+from shop import show_shop, buy_brainrot
+from games import (
+    slot_machine, wheel_of_fortune, dice_game, crystal_alchemy,
+    mine_game, mine_result, brainrot_lottery, crystal_quest, evolve_brainrot
+)
+from pvp import start_random_duel
+from admin import (
+    admin_panel, add_balance, remove_balance,
+    give_brainrot, remove_brainrot,
+    set_chance, edit_message
+)
+
+TOKEN = "8480071459:AAHLu6UU6Az20D05pbhy7nQJ6P7-1ac9rP8"
+bot = Bot(token=TOKEN)
+dp = Dispatcher(bot)
+
+init_db()
+
+def load_text(name):
+    with open("texts.json", "r", encoding="utf-8") as f:
+        return json.load(f).get(name, "")
+
+@dp.message_handler(commands=['start'])
+async def start(msg: types.Message):
+    get_user(msg.from_user.id, msg.from_user.username)
+    kb = InlineKeyboardMarkup().add(
+        InlineKeyboardButton("📢 Подписаться на ТГК", url="https://t.me/brainshoprot")
+    )
+    await msg.answer(load_text("welcome"), reply_markup=kb)
+
+@dp.message_handler(commands=['shop'])
+async def shop(msg: types.Message):
+    await show_shop(msg)
+
+@dp.message_handler(lambda msg: msg.text.startswith("/buy "))
+async def buy(msg: types.Message):
+    await buy_brainrot(msg)
+
+@dp.message_handler(lambda msg: msg.text == "🎰 Слот-машина")
+async def slot(msg: types.Message):
+    await slot_machine(msg)
+
+@dp.message_handler(lambda msg: msg.text == "🎯 Колесо удачи")
+async def wheel(msg: types.Message):
+    await wheel_of_fortune(msg)
+
+@dp.message_handler(lambda msg: msg.text == "🎲 Кости")
+async def dice(msg: types.Message):
+    await dice_game(msg)
+
+@dp.message_handler(lambda msg: msg.text == "🧪 Алхимия")
+async def alchemy(msg: types.Message):
+    await crystal_alchemy(msg)
+
+@dp.message_handler(lambda msg: msg.text == "💣 Мина или кристалл")
+async def mine(msg: types.Message):
+    await mine_game(msg)
+
+@dp.callback_query_handler(lambda call: call.data.startswith("mine_"))
+async def mine_cb(call: types.CallbackQuery):
+    await mine_result(call)
+
+@dp.message_handler(lambda msg: msg.text == "🧠 Брейнрот-лотерея")
+async def lottery(msg: types.Message):
+    await brainrot_lottery(msg)
+
+@dp.message_handler(lambda msg: msg.text == "💎 Кристальный Квест")
+async def quest(msg: types.Message):
+    await crystal_quest(msg)
+
+@dp.message_handler(lambda msg: msg.text == "🧬 Эволюция Брейнрота")
+async def evolve(msg: types.Message):
+    await evolve_brainrot(msg)
+
+@dp.message_handler(lambda msg: msg.text == "⚔️ Сражение с рандомом")
+async def duel(msg: types.Message):
+    await start_random_duel(msg)
+
+@dp.message_handler(commands=['admin'])
+async def admin(msg: types.Message):
+    await admin_panel(msg)
+
+@dp.message_handler(commands=['add_balance'])
+async def add(msg: types.Message):
+    await add_balance(msg)
+
+@dp.message_handler(commands=['remove_balance'])
+async def rem(msg: types.Message):
+    await remove_balance(msg)
+
+@dp.message_handler(commands=['give_brainrot'])
+async def give(msg: types.Message):
+    await give_brainrot(msg)
+
+@dp.message_handler(commands=['remove_brainrot'])
+async def rem_br(msg: types.Message):
+    await remove_brainrot(msg)
+
+@dp.message_handler(commands=['set_chance'])
+async def chance(msg: types.Message):
+    await set_chance(msg)
+
+@dp.message_handler(commands=['edit_message'])
+async def edit_msg(msg: types.Message):
+    await edit_message(msg)
+
+executor.start_polling(dp)

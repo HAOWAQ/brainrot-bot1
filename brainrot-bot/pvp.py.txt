@@ -1,0 +1,17 @@
+duel_queue = []
+active_duels = {}
+
+async def start_random_duel(msg):
+    user_id = msg.from_user.id
+    if user_id in duel_queue:
+        await msg.answer("Вы уже в очереди на сражение.")
+        return
+    duel_queue.append(user_id)
+    if len(duel_queue) >= 2:
+        p1 = duel_queue.pop(0)
+        p2 = duel_queue.pop(0)
+        active_duels[p1] = p2
+        active_duels[p2] = p1
+        await msg.answer(f"⚔️ Сражение началось между {p1} и {p2}!")
+    else:
+        await msg.answer("Ожидаем второго игрока для сражения...")

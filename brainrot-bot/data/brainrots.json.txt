@@ -1,0 +1,6 @@
+[
+  {"name": "Corn Corn Corn", "rarity": "common", "price": 100, "crystal_value": 50},
+  {"name": "Sigma Girl", "rarity": "rare", "price": 300, "crystal_value": 150},
+  {"name": "Turbo 4000", "rarity": "epic", "price": 500, "crystal_value": 300},
+  {"name": "Noobini", "rarity": "secret", "price": 1000, "crystal_value": 800}
+]

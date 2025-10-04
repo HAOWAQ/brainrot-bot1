@@ -1,0 +1,165 @@
+import random
+import sqlite3
+from aiogram import types
+from db import get_user
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+
+# 🎰 Слот-машина
+async def slot_machine(msg: types.Message):
+    get_user(msg.from_user.id, msg.from_user.username)
+    conn = sqlite3.connect("users.db")
+    cur = conn.cursor()
+    cur.execute("SELECT balance FROM users WHERE id=?", (msg.from_user.id,))
+    balance = cur.fetchone()[0]
+    if balance >= 100:
+        symbols = ["🍒", "💎", "🔔", "🍋"]
+        roll = [random.choice(symbols) for _ in range(3)]
+        result = " | ".join(roll)
+        reward = 300 if roll[0] == roll[1] == roll[2] else 0
+        cur.execute("UPDATE users SET balance=balance-100, crystals=crystals+? WHERE id=?", (reward, msg.from_user.id))
+        conn.commit()
+        await msg.answer(f"🎰 {result}\n{'Вы выиграли 300 💎!' if reward else 'Не повезло.'}")
+    else:
+        await msg.answer("❌ Недостаточно средств.")
+    conn.close()
+
+# 🎯 Колесо удачи
+async def wheel_of_fortune(msg: types.Message):
+    get_user(msg.from_user.id, msg.from_user.username)
+    prizes = ["💎 100", "🧠 1", "💎 50", "Пусто", "💎 200"]
+    conn = sqlite3.connect("users.db")
+    cur = conn.cursor()
+    cur.execute("SELECT balance FROM users WHERE id=?", (msg.from_user.id,))
+    balance = cur.fetchone()[0]
+    if balance >= 50:
+        prize = random.choice(prizes)
+        cur.execute("UPDATE users SET balance=balance-50 WHERE id=?", (msg.from_user.id,))
+        if "💎" in prize:
+            amount = int(prize.split()[1])
+            cur.execute("UPDATE users SET crystals=crystals+? WHERE id=?", (amount, msg.from_user.id))
+        elif "🧠" in prize:
+            cur.execute("INSERT INTO inventory (user_id, brainrot) VALUES (?, ?)", (msg.from_user.id, "Corn Corn Corn"))
+        conn.commit()
+        await msg.answer(f"🎯 Колесо остановилось: {prize}")
+    else:
+        await msg.answer("❌ Недостаточно средств.")
+    conn.close()
+
+# 🎲 Кости
+async def dice_game(msg: types.Message):
+    get_user(msg.from_user.id, msg.from_user.username)
+    conn = sqlite3.connect("users.db")
+    cur = conn.cursor()
+    cur.execute("SELECT balance FROM users WHERE id=?", (msg.from_user.id,))
+    balance = cur.fetchone()[0]
+    if balance >= 100:
+        roll = random.randint(1, 6)
+        reward = 500 if roll == 6 else 0
+        cur.execute("UPDATE users SET balance=balance-100, crystals=crystals+? WHERE id=?", (reward, msg.from_user.id))
+        conn.commit()
+        await msg.answer(f"🎲 Выпало: {roll}\n{'Вы выиграли 500 💎!' if reward else 'Не повезло.'}")
+    else:
+        await msg.answer("❌ Недостаточно средств.")
+    conn.close()
+
+# 🧪 Алхимия
+async def crystal_alchemy(msg: types.Message):
+    get_user(msg.from_user.id, msg.from_user.username)
+    conn = sqlite3.connect("users.db")
+    cur = conn.cursor()
+    cur.execute("SELECT COUNT(*) FROM inventory WHERE user_id=?", (msg.from_user.id,))
+    br = cur.fetchone()[0]
+    if br >= 1:
+        reward = random.choice([0, 100, 250, 500, 1000])
+        cur.execute("DELETE FROM inventory WHERE user_id=? LIMIT 1", (msg.from_user.id,))
+        cur.execute("UPDATE users SET crystals=crystals+? WHERE id=?", (reward, msg.from_user.id))
+        conn.commit()
+        await msg.answer(f"🧪 Алхимия завершена!\n{'Вы создали кристалл на ' + str(reward) + ' 💎!' if reward else 'Неудача, Брейнрот исчез.'}")
+    else:
+        await msg.answer("❌ У вас нет Брейнротов.")
+    conn.close()
+
+# 💣 Мина или кристалл
+async def mine_game(msg: types.Message):
+    get_user(msg.from_user.id, msg.from_user.username)
+    conn = sqlite3.connect("users.db")
+    cur = conn.cursor()
+    cur.execute("SELECT balance FROM users WHERE id=?", (msg.from_user.id,))
+    balance = cur.fetchone()[0]
+    if balance >= 50:
+        cur.execute("UPDATE users SET balance=balance-50 WHERE id=?", (msg.from_user.id,))
+        conn.commit()
+        kb = InlineKeyboardMarkup()
+        for i in range(1, 4):
+            kb.add(InlineKeyboardButton(f"Выбрать {i}", callback_data=f"mine_{i}"))
+        await msg.answer("💣 Выбери одну из трёх кнопок. Две — кристаллы, одна — мина.", reply_markup=kb)
+    else:
+        await msg.answer("❌ Недостаточно средств.")
+    conn.close()
+
+async def mine_result(call: types.CallbackQuery):
+    choice = int(call.data.split("_")[1])
+    result = random.choice(["💎", "💎", "💣"])
+    conn = sqlite3.connect("users.db")
+    cur = conn.cursor()
+    if result == "💎":
+        cur.execute("UPDATE users SET crystals=crystals+100 WHERE id=?", (call.from_user.id,))
+        await call.message.answer("💎 Вы нашли кристалл! +100")
+    else:
+        await call.message.answer("💣 Бах! Мина. Ничего не получено.")
+    conn.commit()
+    conn.close()
+
+# 🧠 Брейнрот-лотерея
+async def brainrot_lottery(msg: types.Message):
+    get_user(msg.from_user.id, msg.from_user.username)
+    conn = sqlite3.connect("users.db")
+    cur = conn.cursor()
+    cur.execute("SELECT balance FROM users WHERE id=?", (msg.from_user.id,))
+    balance = cur.fetchone()[0]
+    if balance >= 200:
+        cur.execute("UPDATE users SET balance=balance-200 WHERE id=?", (msg.from_user.id,))
+        roll = random.randint(1, 100)
+        if roll <= 5:
+            name = "Noobini"
+        elif roll <= 20:
+            name = "Turbo 4000"
+        elif roll <= 50:
+            name = "Sigma Girl"
+        else:
+            name = "Corn Corn Corn"
+        cur.execute("INSERT INTO inventory (user_id, brainrot) VALUES (?, ?)", (msg.from_user.id, name))
+        conn.commit()
+        await msg.answer(f"🧠 Вы получили: {name}")
+    else:
+        await msg.answer("❌ Недостаточно средств.")
+    conn.close()
+
+# 💎 Кристальный Квест
+async def crystal_quest(msg: types.Message):
+    get_user(msg.from_user.id, msg.from_user.username)
+    conn = sqlite3.connect("users.db")
+    cur = conn.cursor()
+    cur.execute("SELECT balance FROM users WHERE id=?", (msg.from_user.id,))
+    balance = cur.fetchone()[0]
+    if balance >= 150:
+        reward = random.randint(50, 500)
+        cur.execute("UPDATE users SET balance=balance-150, crystals=crystals+? WHERE id=?", (reward, msg.from_user.id))
+        conn.commit()
+        await msg.answer(f"💎 Вы нашли {reward} кристаллов!")
+    else:
+        await msg.answer("❌ Недостаточно средств.")
+    conn.close()
+
+# 🧬 Эволюция Брейнрота
+async def evolve_brainrot(msg: types.Message):
+    get_user(msg.from_user.id, msg.from_user.username)
+    conn = sqlite3.connect("users.db")
+    cur = conn.cursor()
+    cur.execute("SELECT COUNT(*) FROM inventory WHERE user_id=?", (msg.from_user.id,))
+    count = cur.fetchone()[0]
+    if count >= 2:
+        cur.execute("DELETE FROM inventory WHERE user_id=? LIMIT 2", (msg.from_user.id,))
+        new_brainrot = random.choice(["Sigma Girl", "Turbo 4000", "Noobini"])
+        cur.execute("INSERT INTO inventory (user_id, brainrot) VALUES (?, ?)", (msg.from_user.id, new_brainrot))
+        conn

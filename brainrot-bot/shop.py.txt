@@ -1,0 +1,46 @@
+import json
+import sqlite3
+from db import get_user
+from aiogram import types
+
+def load_brainrots():
+    with open("data/brainrots.json", "r") as f:
+        return json.load(f)
+
+async def show_shop(msg: types.Message):
+    get_user(msg.from_user.id, msg.from_user.username)
+    brainrots = load_brainrots()
+    text = "🧠 Магазин Брейнротов:\n"
+    for b in brainrots:
+        text += f"{b['name']} — {b['price']}₽ ({b['rarity']})\n"
+    text += "\n📸 После оплаты сделай скрин и отправь его — без него вам ничего не выдадут."
+    await msg.answer(text + "\nКупить: /buy Название")
+
+async def buy_brainrot(msg: types.Message):
+    name = msg.text.replace("/buy ", "")
+    brainrots = load_brainrots()
+    selected = next((b for b in brainrots if b["name"].lower() == name.lower()), None)
+    if not selected:
+        await msg.answer("Такого Брейнрота нет.")
+        return
+
+    conn = sqlite3.connect("users.db")
+    cur = conn.cursor()
+    cur.execute("SELECT balance FROM users WHERE id=?", (msg.from_user.id,))
+    balance = cur.fetchone()[0]
+
+    if balance >= selected["price"]:
+        cur.execute("UPDATE users SET balance=balance-?, crystals=crystals+? WHERE id=?",
+                    (selected["price"], selected["crystal_value"], msg.from_user.id))
+        cur.execute("INSERT INTO inventory (user_id, brainrot) VALUES (?, ?)",
+                    (msg.from_user.id, selected["name"]))
+        conn.commit()
+        await msg.answer(
+            f"✅ Вы купили: {selected['name']}!\n"
+            f"💎 Получено: {selected['crystal_value']} кристаллов\n\n"
+            f"📩 Напиши @Nick5239 для продолжения.\n"
+            f"📸 Не забудь сделать скрин оплаты — без него вам ничего не выдадут."
+        )
+    else:
+        await msg.answer("❌ Недостаточно средств.")
+    conn.close()

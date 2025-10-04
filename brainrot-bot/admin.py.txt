@@ -1,0 +1,85 @@
+import sqlite3
+import json
+
+ADMIN_ID = 5239  # ← замени на свой Telegram ID
+
+def is_admin(msg):
+    return msg.from_user.id == ADMIN_ID
+
+async def admin_panel(msg):
+    if not is_admin(msg):
+        await msg.answer("⛔ Нет доступа.")
+        return
+    await msg.answer(
+        "🛠 Админ-команды:\n"
+        "/add_balance ID СУММА\n"
+        "/remove_balance ID СУММА\n"
+        "/give_brainrot ID Название\n"
+        "/remove_brainrot ID Название\n"
+        "/set_chance Игра Название Шанс\n"
+        "/edit_message Название Новый_текст"
+    )
+
+async def add_balance(msg):
+    if not is_admin(msg): return
+    _, uid, amount = msg.text.split()
+    conn = sqlite3.connect("users.db")
+    cur = conn.cursor()
+    cur.execute("UPDATE users SET balance=balance+? WHERE id=?", (int(amount), int(uid)))
+    conn.commit()
+    conn.close()
+    await msg.answer("✅ Баланс добавлен.")
+
+async def remove_balance(msg):
+    if not is_admin(msg): return
+    _, uid, amount = msg.text.split()
+    conn = sqlite3.connect("users.db")
+    cur = conn.cursor()
+    cur.execute("UPDATE users SET balance=balance-? WHERE id=?", (int(amount), int(uid)))
+    conn.commit()
+    conn.close()
+    await msg.answer("✅ Баланс уменьшен.")
+
+async def give_brainrot(msg):
+    if not is_admin(msg): return
+    _, uid, name = msg.text.split(maxsplit=2)
+    conn = sqlite3.connect("users.db")
+    cur = conn.cursor()
+    cur.execute("INSERT INTO inventory (user_id, brainrot) VALUES (?, ?)", (int(uid), name))
+    conn.commit()
+    conn.close()
+    await msg.answer(f"✅ Выдан Брейнрот: {name}")
+
+async def remove_brainrot(msg):
+    if not is_admin(msg): return
+    _, uid, name = msg.text.split(maxsplit=2)
+    conn = sqlite3.connect("users.db")
+    cur = conn.cursor()
+    cur.execute("DELETE FROM inventory WHERE user_id=? AND brainrot=? LIMIT 1", (int(uid), name))
+    conn.commit()
+    conn.close()
+    await msg.answer(f"✅ Удалён Брейнрот: {name}")
+
+async def set_chance(msg):
+    if not is_admin(msg): return
+    _, game, key, value = msg.text.split()
+    with open("config.json", "r") as f:
+        config = json.load(f)
+    config[game][key] = int(value)
+    with open("config.json", "w") as f:
+        json.dump(config, f, indent=2)
+    await msg.answer(f"✅ Шанс в {game} обновлён: {key} = {value}")
+
+async def edit_message(msg):
+    if not is_admin(msg): return
+    parts = msg.text.split(maxsplit=2)
+    if len(parts) < 3:
+        await msg.answer("❌ Формат: /edit_message Название Новый_текст")
+        return
+    _, key, new_text = parts
+    with open("texts.json", "r", encoding="utf-8") as f:
+        texts = json.load(f)
+    texts[key] = new_text
+    with open("texts.json", "w", encoding="utf-8") as f:
+        json.dump(texts, f, indent=2, ensure_ascii=False)
+    await msg.answer(f"✅ Сообщение '{key}' обновлено.")

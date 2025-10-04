@@ -1,0 +1,5 @@
+{
+  "slot_machine": {"win_chance": 10},
+  "wheel_of_fortune": {"rare_brainrot_chance": 5},
+  "brainrot_lottery": {"epic_chance": 5, "rare_chance": 15}
+}

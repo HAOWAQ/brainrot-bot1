@@ -1,0 +1,27 @@
+import sqlite3
+
+def init_db():
+    conn = sqlite3.connect("users.db")
+    cur = conn.cursor()
+    cur.execute("""CREATE TABLE IF NOT EXISTS users (
+        id INTEGER PRIMARY KEY,
+        username TEXT,
+        balance INTEGER DEFAULT 0,
+        crystals INTEGER DEFAULT 0
+    )""")
+    cur.execute("""CREATE TABLE IF NOT EXISTS inventory (
+        user_id INTEGER,
+        brainrot TEXT,
+        FOREIGN KEY(user_id) REFERENCES users(id)
+    )""")
+    conn.commit()
+    conn.close()
+
+def get_user(user_id, username):
+    conn = sqlite3.connect("users.db")
+    cur = conn.cursor()
+    cur.execute("SELECT * FROM users WHERE id=?", (user_id,))
+    if not cur.fetchone():
+        cur.execute("INSERT INTO users (id, username) VALUES (?, ?)", (user_id, username))
+    conn.commit()
+    conn.close()
